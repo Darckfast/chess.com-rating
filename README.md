@@ -7,6 +7,6 @@ Given a username, this API will retrive the user current rapid rating on chess.c
 To set up this using StreamElements, add a custom command with the following 
 
 ```
-${customapi.https://darckfast.com/api/chess?username=chess_com_username&key=rapid&message=$(queryescape current rating on rapid: =rapid and puzzles: =tactics)}
+${customapi.https://darckfast.com/api/chess?username=chess_com_username&key=rapid&message=$(queryescape "current rating on rapid: =rapid and puzzles: =tactics")}
 ```
 
