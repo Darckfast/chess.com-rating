@@ -10,53 +10,32 @@ import (
 	"slices"
 	"strings"
 	"time"
-)
 
-type MemberCallback struct {
-	Stats []struct {
-		Key   string `json:"key"`
-		Stats struct {
-			Rating                json.RawMessage `json:"rating"`
-			HighestRating         int             `json:"highest_rating"`
-			HighestRatingDate     string          `json:"highest_rating_date"`
-			RatingTimeChangeDays  int             `json:"rating_time_change_days"`
-			RatingTimeChangeValue int             `json:"rating_time_change_value"`
-			TotalGameCount        int             `json:"total_game_count"`
-			TotalWinCount         int             `json:"total_win_count"`
-			TotalLossCount        int             `json:"total_loss_count"`
-			TotalDrawCount        int             `json:"total_draw_count"`
-			AvgOpponentRating     int             `json:"avg_opponent_rating"`
-			TimeoutPercent        int             `json:"timeout_percent"`
-			TimeoutDays           int             `json:"timeout_days"`
-			TotalInProgressCount  int             `json:"total_in_progress_count"`
-			AvgMoveTime           float64         `json:"avg_move_time"`
-			LastDate              string          `json:"last_date"`
-		} `json:"stats"`
-		GameCount  int    `json:"gameCount"`
-		LastPlayed bool   `json:"lastPlayed"`
-		LastDate   string `json:"lastDate,omitempty"`
-	} `json:"stats"`
-	LastType string `json:"lastType"`
-	Versus   struct {
-		Total int `json:"total"`
-	} `json:"versus"`
-	RatingOnlyStats []string    `json:"ratingOnlyStats"`
-	OfficialRating  interface{} `json:"officialRating"`
-	LessonLevel     struct {
-		Icon     string `json:"icon"`
-		Name     string `json:"name"`
-		Progress int    `json:"progress"`
-	} `json:"lessonLevel"`
-}
+	"main/pkg/utils"
+
+	multilogger "github.com/Darckfast/multi_logger/pkg/multi_logger"
+)
 
 const (
 	CHESS_CALLBACK_URL = "https://www.chess.com/callback/member/stats/"
 )
 
-var logger = slog.New(slog.NewJSONHandler(os.Stdout, nil))
+var logger = slog.New(multilogger.NewHandler(os.Stdout))
 
 func Handler(w http.ResponseWriter, r *http.Request) {
-	logger.Info("Incoming request")
+	ctx, wg := multilogger.SetupContext(&multilogger.SetupOps{
+		Namespace:   r.URL.Path,
+		ApiKey:      os.Getenv("BASELIME_API_KEY"),
+		ServiceName: os.Getenv("VERCEL_GIT_REPO_SLUG"),
+	})
+
+	defer func() {
+		wg.Wait()
+		ctx.Done()
+	}()
+
+	logger.InfoContext(ctx, "Processing request")
+
 	username := r.URL.Query().Get("username")
 	message := r.URL.Query().Get("message")
 	message, _ = url.QueryUnescape(message)
@@ -67,14 +46,14 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	if username == "" {
 		w.WriteHeader(400)
-
+		logger.WarnContext(ctx, "username is required")
 		fmt.Fprint(w, "username is required")
 		return
 	}
 
 	if len(keys) == 0 {
 		w.WriteHeader(400)
-
+		logger.WarnContext(ctx, "stats keys are required")
 		fmt.Fprint(w, "stats keys are required")
 		return
 	}
@@ -87,20 +66,20 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	res, err := client.Do(req)
 	if err != nil {
-		logger.Error("error requesting chess.com api", "error", err.Error())
+		logger.ErrorContext(ctx, "error requesting chess.com api", "error", err.Error())
 
 		fmt.Fprint(w, "ops, something went wrong")
 		return
 	}
 
 	if res.StatusCode != http.StatusOK {
-		logger.Error("chess.com api returned error", "status", res.StatusCode)
+		logger.ErrorContext(ctx, "chess.com api returned error", "status", res.StatusCode)
 
 		fmt.Fprint(w, "ops, something went wrong")
 		return
 	}
 
-	var chessRes MemberCallback
+	var chessRes utils.MemberCallback
 	defer res.Body.Close()
 
 	json.NewDecoder(res.Body).Decode(&chessRes)
@@ -111,5 +90,6 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	logger.InfoContext(ctx, "request completed")
 	fmt.Fprint(w, message)
 }
