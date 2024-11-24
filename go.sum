@@ -4,5 +4,7 @@ github.com/Darckfast/multi_logger v0.0.5 h1:40u341t6XrxhpaYG6DrvmIuaLy/go7a/4fmt
 github.com/Darckfast/multi_logger v0.0.5/go.mod h1:9H+w9FNbhUFZQ9WftNJfKe5jrfE1ZZAwlH7sTiPARCk=
 github.com/Darckfast/multi_logger v0.0.6 h1:9NktKi7YJmymg+24sKnLAOIJHxXw9pTrYkMe+2QMKEU=
 github.com/Darckfast/multi_logger v0.0.6/go.mod h1:9H+w9FNbhUFZQ9WftNJfKe5jrfE1ZZAwlH7sTiPARCk=
+github.com/Darckfast/multi_logger v0.0.7 h1:f/GdA/w07ufLL9qMRSheXfiGogi73bjM/Fg5HmnCHRg=
+github.com/Darckfast/multi_logger v0.0.7/go.mod h1:9H+w9FNbhUFZQ9WftNJfKe5jrfE1ZZAwlH7sTiPARCk=
 github.com/google/uuid v1.6.0 h1:NIvaJDMOsjHA8n1jAhLSgzrAzy1Hgr+hNrb57e+94F0=
 github.com/google/uuid v1.6.0/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
