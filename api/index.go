@@ -24,9 +24,10 @@ var logger = slog.New(multilogger.NewHandler(os.Stdout))
 
 func Handler(w http.ResponseWriter, r *http.Request) {
 	ctx, wg := multilogger.SetupContext(&multilogger.SetupOps{
-		Request:     r,
-		ApiKey:      os.Getenv("BASELIME_API_KEY"),
-		ServiceName: os.Getenv("VERCEL_GIT_REPO_SLUG"),
+		Request:        r,
+		BaselimeApiKey: os.Getenv("BASELIME_API_KEY"),
+		AxiomApiKey:    os.Getenv("AXIOM_API_KEY"),
+		ServiceName:    os.Getenv("VERCEL_GIT_REPO_SLUG"),
 	})
 
 	defer func() {
