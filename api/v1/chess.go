@@ -9,11 +9,11 @@ import (
 	"os"
 	"slices"
 	"strings"
-	"time"
 
 	"main/pkg/utils"
 
 	multilogger "github.com/Darckfast/multi_logger/pkg/multi_logger"
+	"github.com/syumai/workers/cloudflare/fetch"
 )
 
 const (
@@ -60,13 +60,10 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	req, _ := http.NewRequest("GET", CHESS_CALLBACK_URL+url.QueryEscape(username), nil)
+	client := fetch.NewClient()
+	req, _ := fetch.NewRequest(r.Context(), "GET", CHESS_CALLBACK_URL+url.QueryEscape(username), nil)
 
-	client := &http.Client{
-		Timeout: 3 * time.Second,
-	}
-
-	res, err := client.Do(req)
+	res, err := client.Do(req, nil)
 	if err != nil {
 		logger.ErrorContext(ctx, "error requesting chess.com api", "error", err.Error())
 

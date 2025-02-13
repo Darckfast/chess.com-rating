@@ -24,3 +24,6 @@ go.work.sum
 # env file
 .env
 .vercel
+build
+node_modules
+.wrangler

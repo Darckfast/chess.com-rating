@@ -1,0 +1,13 @@
+name = "chess-com-rating"
+main = "./build/worker.mjs"
+compatibility_date = "2024-04-15"
+
+[vars]
+VERCEL_GIT_REPO_SLUG = "chess.com-rating"
+
+[build]
+command = "make build"
+
+[observability.logs]
+enabled = true
+
