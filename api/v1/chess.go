@@ -1,6 +1,7 @@
 package chess
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"log/slog"
@@ -24,11 +25,25 @@ var logger = slog.New(multilogger.NewHandler(os.Stdout))
 
 func Handler(w http.ResponseWriter, r *http.Request) {
 	ctx, wg := multilogger.SetupContext(&multilogger.SetupOps{
-		Request:           r,
-		BaselimeApiKey:    os.Getenv("BASELIME_API_KEY"),
-		BetterStackApiKey: os.Getenv("BETTERSTACK_API_KEY"),
-		AxiomApiKey:       os.Getenv("AXIOM_API_KEY"),
-		ServiceName:       os.Getenv("VERCEL_GIT_REPO_SLUG"),
+		Request:     r,
+		AxiomApiKey: os.Getenv("AXIOM_API_KEY"),
+		ServiceName: os.Getenv("VERCEL_GIT_REPO_SLUG"),
+		RequestGen: func(args multilogger.SendLogsArgs) {
+			args.MaxQueue <- 1
+			args.Wg.Add(1)
+
+			req, _ := fetch.NewRequest(args.Ctx, args.Method, args.Url, bytes.NewBuffer(*args.Body))
+			req.Header.Add("Content-Type", "application/json")
+			req.Header.Add("Authorization", args.Bearer)
+
+			client := fetch.NewClient()
+
+			go func() {
+				defer args.Wg.Done()
+				client.Do(req, nil)
+				<-args.MaxQueue
+			}()
+		},
 	})
 
 	defer func() {

@@ -1,5 +1,7 @@
 github.com/Darckfast/multi_logger v0.0.7 h1:f/GdA/w07ufLL9qMRSheXfiGogi73bjM/Fg5HmnCHRg=
 github.com/Darckfast/multi_logger v0.0.7/go.mod h1:9H+w9FNbhUFZQ9WftNJfKe5jrfE1ZZAwlH7sTiPARCk=
+github.com/Darckfast/multi_logger v0.0.17 h1:Ki6p/jeSu0hnnlq9Q5U6vx+hW/yB5uetXz8u1xDWlRc=
+github.com/Darckfast/multi_logger v0.0.17/go.mod h1:9H+w9FNbhUFZQ9WftNJfKe5jrfE1ZZAwlH7sTiPARCk=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/google/uuid v1.6.0 h1:NIvaJDMOsjHA8n1jAhLSgzrAzy1Hgr+hNrb57e+94F0=
