@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"slices"
 	"strings"
 
 	"main/pkg/utils"
@@ -51,12 +50,10 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		ctx.Done()
 	}()
 
-	logger.InfoContext(ctx, "processing request")
-
+	w.Header().Set("Content-Type", "text/plain")
 	username := r.URL.Query().Get("username")
 	message := r.URL.Query().Get("message")
 	message, _ = url.QueryUnescape(message)
-	keys := r.URL.Query()["key"]
 
 	username, _ = url.QueryUnescape(username)
 	username = strings.TrimSpace(username)
@@ -65,13 +62,6 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(400)
 		logger.WarnContext(ctx, "username is required", "status", 400)
 		fmt.Fprint(w, "username is required")
-		return
-	}
-
-	if len(keys) == 0 {
-		w.WriteHeader(400)
-		logger.WarnContext(ctx, "stats keys are required", "status", 400)
-		fmt.Fprint(w, "stats keys are required")
 		return
 	}
 
@@ -99,9 +89,15 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	json.NewDecoder(res.Body).Decode(&chessRes)
 
 	for _, stat := range chessRes.Stats {
-		if slices.Contains(keys, stat.Key) {
+		if strings.Contains(message, stat.Key) {
 			message = strings.Replace(message, "="+stat.Key, string(stat.Stats.Rating), 1)
 		}
+	}
+
+	origin := r.Header.Get("Origin")
+
+	if origin != "" {
+		w.Header().Set("Access-Control-Allow-Origin", origin)
 	}
 
 	logger.InfoContext(ctx, "request completed", "status", 200)
