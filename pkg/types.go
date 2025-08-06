@@ -1,8 +1,8 @@
-package utils
+package chess
 
 import "encoding/json"
 
-type MemberCallback struct {
+type ChessStats struct {
 	Stats []struct {
 		Key   string `json:"key"`
 		Stats struct {
