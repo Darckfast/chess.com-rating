@@ -67,6 +67,12 @@ func FuncHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	Log.InfoContext(ctx, "request completed", "status", 200)
+	w.Header().Set("Cache-Control", "public, max-age=604800")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	w.Header().Set("X-Frame-Options", "Deny")
+	w.Header().Set("Strict-Transport-Security", "max-age=63072000; includeSubDomains; preload")
+	w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
+	Log.InfoContext(ctx, "response", "status", 200)
 	fmt.Fprint(w, message)
 }
