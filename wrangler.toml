@@ -1,7 +1,7 @@
 name = "chess-com-rating"
 main = "./build/worker.mjs"
 compatibility_date = "2024-04-15"
-workers_dev = false
+workers_dev = true
 preview_urls = false
 assets = { directory = "./public/" }
 

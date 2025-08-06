@@ -35,6 +35,6 @@ func Compress(fn http.HandlerFunc) http.HandlerFunc {
 }
 
 func main() {
-	http.HandleFunc("GET /", Compress(chess.Handler))
+	http.HandleFunc("GET /", Compress(chess.FuncHandler))
 	workers.Serve(nil)
 }
