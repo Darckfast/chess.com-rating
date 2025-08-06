@@ -6,15 +6,8 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
-	"os"
 	"strings"
-	"time"
 
-	"github.com/charmbracelet/log"
-	"github.com/getsentry/sentry-go"
-	sentryslog "github.com/getsentry/sentry-go/slog"
-	slogmulti "github.com/samber/slog-multi"
-	"github.com/syumai/workers/cloudflare"
 	"github.com/syumai/workers/cloudflare/fetch"
 )
 
@@ -24,59 +17,10 @@ const (
 
 var Log *slog.Logger
 
-func InitLoggger(r *http.Request) {
-	c := fetch.NewClient()
+func FuncHandler(w http.ResponseWriter, r *http.Request) {
+	wg := SetupContext(r)
 
-	err := sentry.Init(sentry.ClientOptions{
-		Dsn:         cloudflare.Getenv("SENTRY_DSN"),
-		EnableLogs:  true,
-		HTTPClient:  c.HTTPClient(fetch.RedirectModeError),
-		Environment: cloudflare.Getenv("WORKER_ENV"),
-	})
-	if err != nil {
-		log.Fatalf("sentry.Init: %s", err)
-	}
-
-	requestIp := r.Header.Get("X-Forwarded-For")
-	connectingIp := r.Header.Get("CF-Connecting-IP")
-	if requestIp != "" && connectingIp != "" {
-		requestIp += ","
-	}
-	requestIp += connectingIp
-	handler := sentryslog.Option{
-		LogLevel: []slog.Level{slog.LevelWarn, slog.LevelInfo, slog.LevelError},
-	}.NewSentryHandler(r.Context())
-
-	if cloudflare.Getenv("WORKER_ENV") == "dev" {
-		prettyHandler := log.New(os.Stdout)
-		Log = slog.New(slogmulti.Fanout(handler, prettyHandler))
-		Log = Log.With(
-			slog.Group("http",
-				slog.String("method", r.Method),
-				slog.String("route", r.URL.Path),
-			),
-		)
-	} else {
-		Log = slog.New(handler)
-		Log = Log.With(
-			slog.Group("http",
-				slog.String("method", r.Method),
-				slog.String("route", r.URL.Path),
-				slog.String("query", r.URL.RawQuery),
-				slog.String("user-agent", r.UserAgent()),
-			),
-		).
-			With("environment", cloudflare.Getenv("WORKER_ENV")).
-			With("service", "chess.com-rating")
-	}
-}
-
-func Handler(w http.ResponseWriter, r *http.Request) {
-	InitLoggger(r)
-
-	defer func() {
-		sentry.Flush(1 * time.Second)
-	}()
+	defer wg.Wait()
 
 	w.Header().Set("Content-Type", "text/plain")
 	origin := r.Header.Get("Origin")
