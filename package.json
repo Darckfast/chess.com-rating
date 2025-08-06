@@ -1,0 +1,16 @@
+{
+    "name": "chess.com-ratings",
+    "version": "1.0.0",
+    "description": "",
+    "main": "index.js",
+    "scripts": {
+        "build": "go run github.com/syumai/workers/cmd/workers-assets-gen -mode=go && GOOS=js GOARCH=wasm go build -o ./build/app.wasm .",
+        "deploy": "wrangler deploy",
+        "dev": "wrangler dev --show-interactive-dev-session false",
+        "start": "wrangler dev --show-interactive-dev-session false"
+    },
+    "keywords": [],
+    "author": "",
+    "license": "ISC",
+    "packageManager": "pnpm@10.14.0"
+}

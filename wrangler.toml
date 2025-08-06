@@ -5,11 +5,9 @@ workers_dev = false
 preview_urls = false
 assets = { directory = "./public/" }
 
-[vars]
-VERCEL_GIT_REPO_SLUG = "chess.com-rating"
-
 [build]
-command = "make build"
+command = "pnpm run build"
+watch_dir = [ "pkg", "main.go"]
 
 [observability.logs]
 enabled = true
