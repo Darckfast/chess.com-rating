@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 
 	"github.com/syumai/workers/cloudflare/fetch"
@@ -15,7 +16,7 @@ const (
 	CHESS_CALLBACK_URL = "https://www.chess.com/callback/member/stats/"
 )
 
-var Log *slog.Logger
+var Log = slog.New(NewHandler(os.Stdout))
 
 func FuncHandler(w http.ResponseWriter, r *http.Request) {
 	wg := SetupContext(r)
@@ -31,9 +32,9 @@ func FuncHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	username := r.URL.Query().Get("username")
 	message := r.URL.Query().Get("message")
+	username = strings.TrimSpace(username)
 	message, _ = url.QueryUnescape(message)
 	username, _ = url.QueryUnescape(username)
-	username = strings.TrimSpace(username)
 
 	if username == "" {
 		w.WriteHeader(400)
