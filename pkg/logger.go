@@ -1,41 +1,51 @@
 package chess
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log"
 	"log/slog"
+	"math/rand"
 	"net/http"
 	"sync"
 	"time"
-
-	"github.com/google/uuid"
-	"github.com/syumai/workers/cloudflare"
 )
 
 const (
-	slogFields     string = "slog_fields"
-	REQUEST_ID_KEY string = "requestId"
-	NAMESPACE_KEY  string = "namespace"
-	MESSAGE_KEY    string = "message"
-	LEVEL_KEY      string = "level"
-	TIMESTAMP_KEY  string = "timestamp"
-	STARTED_AT_KEY string = "startedAt"
-	DATA_KEY       string = "data"
+	slogFields    string = "slog_fields"
+	MESSAGE_KEY   string = "msg"
+	LEVEL_KEY     string = "level"
+	TIMESTAMP_KEY string = "timestamp"
 )
 
 var (
-	AXIOM_API_KEY = ""
-	SERVICE_NAME  = ""
+	letters     = []rune("0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+	axiomApiKey string
+	serviceName string
+	maxQueue    chan int
+	transport   http.RoundTripper
+	wg          *sync.WaitGroup
 )
 
+type NewHandlerArgs struct {
+	out         io.Writer
+	serviceName string
+	axiomApiKey string
+	transport   http.RoundTripper
+}
+
 type Handler struct {
+	startedAt time.Time
 	slog.Handler
 	l *log.Logger
 }
 
-var sendLogsArs SendLogsArgs
+func init() {
+	rand.New(rand.NewSource(time.Now().UnixNano()))
+}
 
 func (h *Handler) Handle(ctx context.Context, record slog.Record) error {
 	fields := make(map[string]any, record.NumAttrs())
@@ -55,37 +65,70 @@ func (h *Handler) Handle(ctx context.Context, record slog.Record) error {
 		}
 	}
 
-	if fields[STARTED_AT_KEY] == nil {
-		timeNow := time.Now()
-		fields[STARTED_AT_KEY] = timeNow
-		AppendCtx(ctx, slog.Time(STARTED_AT_KEY, timeNow))
-	}
-
-	if fields["duration"] == nil {
-		startedAt := fields[STARTED_AT_KEY].(time.Time)
-		duration := time.Since(startedAt).Milliseconds()
-		fields["duration"] = duration
-	}
+	duration := time.Since(h.startedAt).Nanoseconds()
+	fields["duration"] = duration
 
 	jsonBytes, _ := json.Marshal(fields)
 	h.l.Println(string(jsonBytes))
 	body, _ := json.Marshal([]any{fields})
 
-	if AXIOM_API_KEY != "" {
-		sendLogsArs.Body = &body
-		SendLogs(sendLogsArs)
+	if axiomApiKey != "" {
+		sendLogOverHTTP(ctx, &body)
 	}
 
 	return nil
 }
 
+func randSeq(n int) string {
+	b := make([]rune, n)
+	for i := range b {
+		b[i] = letters[rand.Intn(len(letters))]
+	}
+	return string(b)
+}
+
+func sendLogOverHTTP(ctx context.Context, body *[]byte) {
+	maxQueue <- 1
+	wg.Add(1)
+
+	req, _ := http.NewRequestWithContext(context.Background(), "POST", "https://api.axiom.co/v1/datasets/main/ingest", bytes.NewBuffer(*body))
+	req.Header.Add("Content-Type", "application/json")
+	req.Header.Add("Authorization", "Bearer "+axiomApiKey)
+
+	client := http.Client{
+		Timeout:   1 * time.Second,
+		Transport: transport,
+	}
+
+	go func() {
+		defer wg.Done()
+		rs, err := client.Do(req)
+
+		if err != nil {
+			fmt.Println("error sending logs over http", err.Error())
+		} else if rs.StatusCode > 399 {
+			fmt.Println("axiom returned non 200 status", rs.StatusCode)
+		}
+		<-maxQueue
+	}()
+}
+
+func NewLogger(args *NewHandlerArgs) *slog.Logger {
+	return slog.New(NewHandler(args))
+}
+
 func NewHandler(
-	out io.Writer,
+	args *NewHandlerArgs,
 ) *Handler {
 	h := &Handler{
-		Handler: slog.NewJSONHandler(out, nil),
-		l:       log.New(out, "", 0),
+		startedAt: time.Now(),
+		Handler:   slog.NewJSONHandler(args.out, nil),
+		l:         log.New(args.out, "", 0),
 	}
+
+	transport = args.transport
+	axiomApiKey = args.axiomApiKey
+	serviceName = args.serviceName
 
 	return h
 }
@@ -105,17 +148,9 @@ func AppendCtx(parent context.Context, attr slog.Attr) context.Context {
 	return context.WithValue(parent, slogFields, v)
 }
 
-type SetupOps struct {
-	AxiomApiKey string
-	ServiceName string
-	Request     *http.Request
-	RequestGen  SendLogsFunc
-}
-
-func SetupContext(r *http.Request) *sync.WaitGroup {
-	uid, _ := uuid.NewV7()
-
-	ctx := AppendCtx(r.Context(), slog.String(REQUEST_ID_KEY, uid.String()))
+func FromContext(r *http.Request) (*sync.WaitGroup, *http.Request) {
+	id := randSeq(24)
+	ctx := AppendCtx(r.Context(), slog.String("id", id))
 
 	if r != nil {
 		ctx = AppendCtx(ctx, slog.String("query", r.URL.RawQuery))
@@ -133,24 +168,16 @@ func SetupContext(r *http.Request) *sync.WaitGroup {
 
 		ctx = AppendCtx(ctx, slog.String("x-forwarded-for", requestIp))
 		ctx = AppendCtx(ctx, slog.String("country", r.Header.Get("CF-IPCountry")))
-		ctx = AppendCtx(ctx, slog.Int64("content-length", r.ContentLength))
 		ctx = AppendCtx(ctx, slog.String("content-type", r.Header.Get("content-type")))
-		ctx = AppendCtx(ctx, slog.String(NAMESPACE_KEY, r.URL.Path))
+		ctx = AppendCtx(ctx, slog.String("path", r.URL.Path))
 	}
 
-	ctx = AppendCtx(ctx, slog.String("service", "chess-com-rating"))
-	ctx = AppendCtx(ctx, slog.Time(STARTED_AT_KEY, time.Now()))
+	ctx = AppendCtx(ctx, slog.String("service", serviceName))
 
-	AXIOM_API_KEY = cloudflare.Getenv("AXIOM_API_KEY")
-
-	sendLogsArs.Wg = &sync.WaitGroup{}
-	sendLogsArs.Ctx = ctx
-	sendLogsArs.MaxQueue = make(chan int, 5)
-	sendLogsArs.Method = "POST"
-	sendLogsArs.Url = "https://api.axiom.co/v1/datasets/main/ingest"
-	sendLogsArs.Bearer = "Bearer " + AXIOM_API_KEY
+	wg = &sync.WaitGroup{}
+	maxQueue = make(chan int, 5)
 
 	r = r.WithContext(ctx)
 
-	return sendLogsArs.Wg
+	return wg, r
 }
