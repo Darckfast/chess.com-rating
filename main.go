@@ -36,5 +36,13 @@ func Compress(fn http.HandlerFunc) http.HandlerFunc {
 
 func main() {
 	http.HandleFunc("GET /", chess.FuncHandler)
+	http.HandleFunc("OPTIONS /", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/plain")
+		origin := r.Header.Get("Origin")
+		if origin != "" {
+			w.Header().Set("Access-Control-Allow-Origin", origin)
+		}
+	})
+
 	workers.Serve(nil)
 }
