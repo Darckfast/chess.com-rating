@@ -9,17 +9,23 @@ import (
 	"os"
 	"strings"
 
+	"github.com/syumai/workers/cloudflare"
 	"github.com/syumai/workers/cloudflare/fetch"
 )
 
 const (
-	CHESS_CALLBACK_URL = "https://www.chess.com/callback/member/stats/"
+	CHESS_COM_URL = "https://www.chess.com/callback/member/stats/"
 )
 
-var Log = slog.New(NewHandler(os.Stdout))
+var Log = NewLogger(&NewHandlerArgs{
+	out:         os.Stdout,
+	serviceName: "chess.com-rating",
+	axiomApiKey: cloudflare.Getenv("AXIOM_API_KEY"),
+	transport:   fetch.NewClient().HTTPClient(fetch.RedirectModeFollow).Transport,
+})
 
 func FuncHandler(w http.ResponseWriter, r *http.Request) {
-	wg := SetupContext(r)
+	wg, r := FromContext(r)
 
 	defer wg.Wait()
 
@@ -44,7 +50,7 @@ func FuncHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	client := fetch.NewClient()
-	req, _ := fetch.NewRequest(r.Context(), "GET", CHESS_CALLBACK_URL+url.QueryEscape(username), nil)
+	req, _ := fetch.NewRequest(r.Context(), "GET", CHESS_COM_URL+url.QueryEscape(username), nil)
 	res, err := client.Do(req, nil)
 	if err != nil {
 		Log.ErrorContext(ctx, "error requesting chess.com", slog.Any("error", err))
