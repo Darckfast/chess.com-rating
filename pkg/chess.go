@@ -25,6 +25,8 @@ var Log = logthis.NewLogger(&logthis.NewHandlerArgs{
 	Transport:   fetch.NewClient().HTTPClient(fetch.RedirectModeFollow).Transport,
 })
 
+var client = fetch.NewClient()
+
 func FuncHandler(w http.ResponseWriter, r *http.Request) {
 	wg, r, _ := logthis.FromRequest(r)
 
@@ -50,7 +52,6 @@ func FuncHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	client := fetch.NewClient()
 	req, _ := fetch.NewRequest(r.Context(), "GET", CHESS_COM_URL+url.QueryEscape(username), nil)
 	res, err := client.Do(req, nil)
 	if err != nil {

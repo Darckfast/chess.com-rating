@@ -4,8 +4,7 @@
     "description": "",
     "main": "index.js",
     "scripts": {
-        "build:tinygo": "go run github.com/syumai/workers/cmd/workers-assets-gen -mode=go && tinygo build -o ./build/app.wasm -target wasm -no-debug ./...",
-        "build": "go run github.com/syumai/workers/cmd/workers-assets-gen -mode=go && GOOS=js GOARCH=wasm go build -o ./build/app.wasm .",
+        "build": "GOOS=js GOARCH=wasm go build -o ./build/app.wasm .",
         "deploy": "wrangler deploy",
         "dev": "wrangler dev --show-interactive-dev-session false",
         "start": "wrangler dev --show-interactive-dev-session false"
