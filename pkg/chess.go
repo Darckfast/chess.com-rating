@@ -10,7 +10,6 @@ import (
 	"strings"
 
 	"github.com/Darckfast/axiom-log-this-go/pkg/logthis"
-	"github.com/syumai/workers/cloudflare"
 	"github.com/syumai/workers/cloudflare/fetch"
 )
 
@@ -18,17 +17,20 @@ const (
 	CHESS_COM_URL = "https://www.chess.com/callback/member/stats/"
 )
 
-var Log = logthis.NewLogger(&logthis.NewHandlerArgs{
-	Out:         os.Stdout,
-	ServiceName: "chess.com-rating",
-	AxiomApiKey: cloudflare.Getenv("AXIOM_API_KEY"),
-	Transport:   fetch.NewClient().HTTPClient(fetch.RedirectModeFollow).Transport,
+var client = fetch.NewClient()
+var Log = NewLogger(&NewHandlerArgs{
+	out:         os.Stdout,
+	serviceName: "chess.com-ratings",
+	axiomApiKey: os.Getenv("AXIOM_API_KEY"),
+	transport:   fetch.NewClient().HTTPClient(fetch.RedirectModeFollow).Transport,
 })
 
 func FuncHandler(w http.ResponseWriter, r *http.Request) {
 	wg, r, _ := logthis.FromRequest(r)
 
-	defer wg.Wait()
+	if wg != nil {
+		defer wg.Wait()
+	}
 
 	w.Header().Set("Content-Type", "text/plain")
 	origin := r.Header.Get("Origin")
@@ -50,7 +52,6 @@ func FuncHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	client := fetch.NewClient()
 	req, _ := fetch.NewRequest(r.Context(), "GET", CHESS_COM_URL+url.QueryEscape(username), nil)
 	res, err := client.Do(req, nil)
 	if err != nil {
