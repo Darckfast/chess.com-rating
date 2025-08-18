@@ -4,7 +4,7 @@ import (
 	chess "main/pkg"
 	"net/http"
 
-	"github.com/syumai/workers"
+	"github.com/syumai/workers/cloudflare/fetch"
 )
 
 func main() {
@@ -17,5 +17,7 @@ func main() {
 		}
 	})
 
-	workers.Serve(nil)
+	fetch.ServeNonBlock(nil)
+
+	<-make(chan struct{})
 }

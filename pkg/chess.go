@@ -9,8 +9,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/Darckfast/axiom-log-this-go/pkg/logthis"
-	"github.com/syumai/workers/cloudflare"
 	"github.com/syumai/workers/cloudflare/fetch"
 )
 
@@ -18,11 +16,11 @@ const (
 	CHESS_COM_URL = "https://www.chess.com/callback/member/stats/"
 )
 
-var Log = logthis.NewLogger(&logthis.NewHandlerArgs{
-	Out:         os.Stdout,
-	ServiceName: "chess.com-rating",
-	AxiomApiKey: cloudflare.Getenv("AXIOM_API_KEY"),
-	Transport:   fetch.NewClient().HTTPClient(fetch.RedirectModeFollow).Transport,
+var Log = NewLogger(&NewHandlerArgs{
+	out:         os.Stdout,
+	serviceName: "chess.com-ratings",
+	axiomApiKey: os.Getenv("AXIOM_API_KEY"),
+	transport:   fetch.NewClient().HTTPClient(fetch.RedirectModeFollow).Transport,
 })
 
 var client = fetch.NewClient()

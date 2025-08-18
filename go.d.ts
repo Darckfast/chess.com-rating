@@ -9,5 +9,5 @@ declare class Go {
     importObject: WebAssembly.Imports;
     exited: boolean;
     mem: DataView;
-    run(instance: WebAssembly.Instance, ctx: ExecutionContext): Promise<void>;
+    run(instance: WebAssembly.Instance): Promise<void>;
 }

@@ -1,4 +1,3 @@
-import { connect } from "cloudflare:sockets";
 import app from "./app.wasm";
 import "./wasm_exec.js";
 
@@ -7,57 +6,31 @@ globalThis.tryCatch = (fn) => {
         return {
             result: fn(),
         };
-    } catch (e) {
+    } catch (error) {
+        if (!(error instanceof Error)) {
+            if (error instanceof Object) {
+                error = JSON.stringify(error)
+            }
+
+            error = new Error(error || 'no error message')
+        }
         return {
-            error: e,
+            error,
         };
     }
-};
 
-async function run(ctx) {
-    return new Promise(async (resolve) => {
-        const go = new Go();
-
-        let imports = go.importObject
-        imports.workers = {
-            ready: () => {
-                resolve(true);
-            },
-        }
-        let instance = new WebAssembly.Instance(app, imports);
-        go.run(instance, ctx);
-    })
 }
 
-async function fetch(req, env, ctx) {
-    const binding = {};
-    await run({ env, ctx, binding, connect });
-    return binding.handleRequest(req);
+function init() {
+    const go = new Go()
+    go.run(new WebAssembly.Instance(app, go.importObject))
 }
 
-// async function scheduled(event, env, ctx) {
-//   const binding = {};
-//   await run(createRuntimeContext({ env, ctx, binding }));
-//   return binding.runScheduler(event);
-// }
-
-// async function queue(batch, env, ctx) {
-//   const binding = {};
-//   await run(createRuntimeContext({ env, ctx, binding }));
-//   return binding.handleQueueMessageBatch(batch);
-// }
-
-// onRequest handles request to Cloudflare Pages
-// async function onRequest(ctx) {
-//     const binding = {};
-//     const { request, env } = ctx;
-//     await run({ env, ctx, binding, connect });
-//     return binding.handleRequest(request);
-// }
+async function fetch(req: Request, env: Env, ctx: ExecutionContext) {
+    init()
+    return await globalThis.cf.fetch(req, env, ctx);
+}
 
 export default {
     fetch,
-    // scheduled,
-    // queue,
-    // onRequest,
 };
