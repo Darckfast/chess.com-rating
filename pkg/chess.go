@@ -1,32 +1,35 @@
+//go:build js && wasm
+
 package chess
 
 import (
 	"encoding/json"
-	"fmt"
 	"log/slog"
 	"net/http"
 	"net/url"
 	"os"
 	"strings"
+	"time"
 
-	"github.com/Darckfast/axiom-log-this-go/pkg/logthis"
-	"github.com/syumai/workers/cloudflare/fetch"
+	"github.com/Darckfast/workers-go/cloudflare/fetch"
 )
 
 const (
 	CHESS_COM_URL = "https://www.chess.com/callback/member/stats/"
 )
 
-var client = fetch.NewClient()
+var client = fetch.Client{
+	Timeout: 3 * time.Second,
+}
+
 var Log = NewLogger(&NewHandlerArgs{
 	out:         os.Stdout,
 	serviceName: "chess.com-ratings",
 	axiomApiKey: os.Getenv("AXIOM_API_KEY"),
-	transport:   fetch.NewClient().HTTPClient(fetch.RedirectModeFollow).Transport,
 })
 
 func FuncHandler(w http.ResponseWriter, r *http.Request) {
-	wg, r, _ := logthis.FromRequest(r)
+	wg, r := FromContext(r)
 
 	if wg != nil {
 		defer wg.Wait()
@@ -46,23 +49,23 @@ func FuncHandler(w http.ResponseWriter, r *http.Request) {
 	username, _ = url.QueryUnescape(username)
 
 	if username == "" {
-		w.WriteHeader(400)
+		w.WriteHeader(200)
 		Log.WarnContext(ctx, "username is required")
-		fmt.Fprint(w, "username is required")
+		w.Write([]byte("username is required"))
 		return
 	}
 
-	req, _ := fetch.NewRequest(r.Context(), "GET", CHESS_COM_URL+url.QueryEscape(username), nil)
-	res, err := client.Do(req, nil)
+	req, _ := http.NewRequestWithContext(r.Context(), "GET", CHESS_COM_URL+url.QueryEscape(username), nil)
+	res, err := client.Do(req)
 	if err != nil {
 		Log.ErrorContext(ctx, "error requesting chess.com", slog.Any("error", err))
-		fmt.Fprint(w, "ops, something went wrong")
+		w.Write([]byte("ops, something went wrong"))
 		return
 	}
 
 	if res.StatusCode != http.StatusOK {
 		Log.ErrorContext(ctx, "chess.com returned error", slog.Int("status", res.StatusCode))
-		fmt.Fprint(w, "ops, something went wrong")
+		w.Write([]byte("ops, something went wrong"))
 		return
 	}
 
@@ -82,5 +85,5 @@ func FuncHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Strict-Transport-Security", "max-age=63072000; includeSubDomains; preload")
 	w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
 	Log.InfoContext(ctx, "response", "status", 200)
-	fmt.Fprint(w, message)
+	w.Write([]byte(message))
 }
