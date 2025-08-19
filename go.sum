@@ -1,7 +1,5 @@
-github.com/Darckfast/axiom-log-this-go v0.3.4 h1:QSzchKtLf4C7N539GD8ZjJNjChdYCBEKx95HN/UK/1I=
-github.com/Darckfast/axiom-log-this-go v0.3.4/go.mod h1:CESMcLO2waoF7vKicKPK1mVstnu/0/ZHN5BdJu4DjKM=
-github.com/Darckfast/workers-go v0.0.1 h1:jITFjCSPNAiWLY9A+TdTOlP+Sy6JauAhBhDn/chZjr4=
-github.com/Darckfast/workers-go v0.0.1/go.mod h1:UdO6I/cvjT8hWvg/TgUWam9SCoC6Wf5n5HzEcmPmYqA=
+github.com/Darckfast/workers-go v0.0.2 h1:qz1QTQJ8sNoTEkkGuhxMLAJiM4trQzIjmCwqq9CffOM=
+github.com/Darckfast/workers-go v0.0.2/go.mod h1:D2D1qsQ+8o53uLlDh3wc8eppeul1HwEL7PpXCm7BB6Y=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=

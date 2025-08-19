@@ -1,10 +1,11 @@
 import app from "./app.wasm";
 import "./wasm_exec.js";
 
+globalThis.cf = {}
 globalThis.tryCatch = (fn) => {
     try {
         return {
-            result: fn(),
+            data: fn(),
         };
     } catch (error) {
         if (!(error instanceof Error)) {
@@ -18,7 +19,6 @@ globalThis.tryCatch = (fn) => {
             error,
         };
     }
-
 }
 
 function init() {

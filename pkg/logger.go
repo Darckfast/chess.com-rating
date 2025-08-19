@@ -1,10 +1,11 @@
+//go:build js && wasm
+
 package chess
 
 import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
 	"io"
 	"log"
 	"log/slog"
@@ -13,7 +14,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/syumai/workers/cloudflare/fetch"
+	"github.com/Darckfast/workers-go/cloudflare/fetch"
 )
 
 const (
@@ -36,17 +37,12 @@ type NewHandlerArgs struct {
 	out         io.Writer
 	serviceName string
 	axiomApiKey string
-	transport   http.RoundTripper
 }
 
 type Handler struct {
 	startedAt time.Time
 	slog.Handler
 	l *log.Logger
-}
-
-func init() {
-	rand.New(rand.NewSource(time.Now().UnixNano()))
 }
 
 func (h *Handler) Handle(ctx context.Context, record slog.Record) error {
@@ -93,13 +89,12 @@ func sendLogOverHTTP(ctx context.Context, body *[]byte) {
 	maxQueue <- 1
 	wg.Add(1)
 
-	req, _ := fetch.NewRequest(ctx, "POST", "https://api.axiom.co/v1/datasets/main/ingest", bytes.NewBuffer(*body))
+	req, _ := http.NewRequestWithContext(ctx, "POST", "https://api.axiom.co/v1/datasets/main/ingest", bytes.NewBuffer(*body))
 	req.Header.Add("Content-Type", "application/json")
 	req.Header.Add("Authorization", "Bearer "+axiomApiKey)
 
-	client := http.Client{
-		Timeout:   1 * time.Second,
-		Transport: transport,
+	client := fetch.Client{
+		Timeout: 1 * time.Second,
 	}
 
 	go func() {
@@ -107,9 +102,9 @@ func sendLogOverHTTP(ctx context.Context, body *[]byte) {
 		rs, err := client.Do(req)
 
 		if err != nil {
-			fmt.Println("error sending logs over http", err.Error())
+			log.Println("error sending logs over http", err.Error())
 		} else if rs.StatusCode > 399 {
-			fmt.Println("axiom returned non 200 status", rs.StatusCode)
+			log.Println("axiom returned non 200 status", rs.StatusCode)
 		}
 		<-maxQueue
 	}()
@@ -128,7 +123,6 @@ func NewHandler(
 		l:         log.New(args.out, "", 0),
 	}
 
-	transport = args.transport
 	axiomApiKey = args.axiomApiKey
 	serviceName = args.serviceName
 

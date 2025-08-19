@@ -1,10 +1,12 @@
+//go:build js && wasm
+
 package main
 
 import (
 	chess "main/pkg"
 	"net/http"
 
-	"github.com/syumai/workers/cloudflare/fetch"
+	"github.com/Darckfast/workers-go/cloudflare/fetch"
 )
 
 func main() {
