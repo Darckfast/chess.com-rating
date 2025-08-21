@@ -1,5 +1,5 @@
-import app from "./app.wasm";
-import "./wasm_exec.js";
+import app from "./bin/app.wasm";
+import "./bin/wasm_exec.js";
 
 globalThis.cf = {}
 globalThis.tryCatch = (fn) => {

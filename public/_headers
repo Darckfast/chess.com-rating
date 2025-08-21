@@ -1,6 +1,0 @@
-/*
-    Access-Control-Allow-Methods: GET, OPTIONS;
-    X-Content-Type-Options: nosniff;
-    X-Frame-Options: Deny;
-    Strict-Transport-Security: max-age=31536000;
-    Referrer-Policy: strict-origin-when-cross-origin;

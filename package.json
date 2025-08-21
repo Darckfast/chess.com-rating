@@ -5,10 +5,10 @@
     "main": "index.js",
     "type": "module",
     "scripts": {
-        "build": "GOOS=js GOARCH=wasm go build -o ./build/app.wasm .",
+        "build": "GOOS=js GOARCH=wasm go build -trimpath -ldflags='-s -w -buildid=' -o ./bin/app.wasm .",
         "deploy": "wrangler deploy",
-        "dev": "wrangler dev --show-interactive-dev-session false",
-        "start": "wrangler dev --show-interactive-dev-session false"
+        "deploy:dry": "pnpm run build && wrangler deploy --minify --dry-run",
+        "dev": "wrangler dev --show-interactive-dev-session false --port 5173"
     },
     "keywords": [],
     "author": "",

@@ -1,14 +1,12 @@
 name = "chess-com-rating"
-main = "./build/worker.ts"
+main = "./main.ts"
 compatibility_date = "2025-08-12"
 workers_dev = false
 preview_urls = false
-assets = { directory = "./public/" }
-compatibility_flags = [ "nodejs_compat" ]
 
 [build]
 command = "pnpm run build"
-watch_dir = [ "pkg", "main.go", "../workers-go"]
+watch_dir = [ "pkg", "main.go"]
 
 [observability.logs]
 enabled = true
