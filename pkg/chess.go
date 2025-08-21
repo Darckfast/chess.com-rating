@@ -35,13 +35,12 @@ var client = fetch.Client{
 var log = logthis.NewLogger(client.Do)
 
 func FuncHandler(w http.ResponseWriter, r *http.Request) {
-	wg, r, _ := logthis.FromRequest(r)
-
-	lifecycle.Ctx.WaitUntil(func() error {
-		wg.Wait()
+	defer lifecycle.Ctx.WaitUntil(func() error {
+		logthis.Flush()
 		return nil
 	})
 
+	r, _ = logthis.FromRequest(r)
 	w.Header().Set("Content-Type", "text/plain")
 	origin := r.Header.Get("Origin")
 	if origin != "" {
@@ -92,5 +91,6 @@ func FuncHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Strict-Transport-Security", "max-age=63072000; includeSubDomains; preload")
 	w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
 	log.InfoContext(ctx, "response", "status", 200)
+
 	w.Write([]byte(message))
 }
