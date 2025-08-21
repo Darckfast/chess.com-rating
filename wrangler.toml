@@ -4,6 +4,9 @@ compatibility_date = "2025-08-12"
 workers_dev = false
 preview_urls = false
 
+[vars]
+SERVICE_NAME="chess-com-rating"
+
 [build]
 command = "pnpm run build"
 watch_dir = [ "pkg", "main.go"]
