@@ -69,6 +69,12 @@ func FuncHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if res.StatusCode == http.StatusNotFound {
+		log.InfoContext(ctx, "username not found")
+		w.Write([]byte("username not found"))
+		return
+	}
+
 	if res.StatusCode != http.StatusOK {
 		log.ErrorContext(ctx, "chess.com returned error", slog.Int("status", res.StatusCode))
 		w.Write([]byte("ops, something went wrong"))
