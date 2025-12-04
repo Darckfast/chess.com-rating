@@ -75,7 +75,7 @@ func FuncHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if res.StatusCode != http.StatusOK {
+	if res.StatusCode >= 299 {
 		log.ErrorContext(ctx, "chess.com returned error", slog.Int("status", res.StatusCode))
 		w.Write([]byte("ops, something went wrong"))
 		return
