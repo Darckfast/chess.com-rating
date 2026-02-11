@@ -7,12 +7,11 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
-	"time"
 
 	logthis "github.com/Darckfast/axiom-log-this-go"
 	"github.com/Darckfast/workers-go/cloudflare/fetch"
-	"github.com/Darckfast/workers-go/cloudflare/lifecycle"
 )
 
 const (
@@ -28,18 +27,9 @@ type ChessStats struct {
 	} `json:"stats"`
 }
 
-var client = fetch.Client{
-	Timeout: 2 * time.Second,
-}
-
-var log = logthis.NewLogger(client.Do)
+var log = slog.New(slog.NewJSONHandler(os.Stdout, nil))
 
 func FuncHandler(w http.ResponseWriter, r *http.Request) {
-	defer lifecycle.Ctx.WaitUntil(func() error {
-		logthis.Flush()
-		return nil
-	})
-
 	r, _ = logthis.FromRequest(r)
 	w.Header().Set("Content-Type", "text/plain")
 	origin := r.Header.Get("Origin")
