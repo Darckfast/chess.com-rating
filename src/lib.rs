@@ -52,10 +52,6 @@ async fn fetch(_req: HttpRequest, _env: Env, _ctx: Context) -> Result<Response> 
             if let Some(msg) = msg_tmpl {
                 let message = msg
                     .split_whitespace()
-                    .map(|x| {
-                        console_log!("{:?},", x);
-                        x
-                    })
                     .map(|word| match word {
                         _ if word.contains("=lightning") => rawstats
                             .get("lightning")
