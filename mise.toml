@@ -1,0 +1,4 @@
+[tools]
+node = "26"
+rust = "1.96"
+wrangler = { version = "4.99", allow_builds = ["esbuild", "sharp", "workerd"] }
