@@ -1,16 +1,12 @@
 name = "chess-com-rating"
-main = "./main.ts"
-compatibility_date = "2025-08-12"
-workers_dev = false
-preview_urls = false
-
-[vars]
-SERVICE_NAME="chess-com-rating"
+main = "build/index.js"
+compatibility_date = "2026-06-14"
 
 [build]
-command = "pnpm run build"
-watch_dir = [ "pkg", "main.go"]
+command = "cargo install -q \"worker-build@^0.8\" && worker-build --release"
 
 [observability.logs]
 enabled = true
 
+[[tail_consumers]]
+service = "axiom-tail-worker"
