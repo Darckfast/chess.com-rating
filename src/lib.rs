@@ -1,3 +1,4 @@
+use http::StatusCode;
 use serde::{de::IgnoredAny, Deserialize};
 use std::collections::HashMap;
 use worker::*;
@@ -30,61 +31,79 @@ async fn fetch(_req: HttpRequest, _env: Env, _ctx: Context) -> Result<Response> 
         Some(usr) => {
             let resp =
                 reqwest::get("https://www.chess.com/callback/member/stats/".to_string() + usr)
-                    .await
-                    .unwrap()
-                    .json::<Chess>()
-                    .await
-                    .unwrap();
+                    .await;
+            match resp {
+                Ok(r) => {
+                    let status = r.status();
+                    match status {
+                        StatusCode::OK => {
+                            let j = r.json::<Chess>().await.unwrap();
 
-            let mut rawstats: HashMap<String, String> = HashMap::new();
+                            let mut rawstats: HashMap<String, String> = HashMap::new();
 
-            for k in &STATS_KEYS {
-                let s = resp.stats.iter().find(|p| p.key == k.to_string());
+                            for k in &STATS_KEYS {
+                                let s = j.stats.iter().find(|p| p.key == k.to_string());
 
-                match s {
-                    Some(ss) => {
-                        rawstats.insert(k.to_string(), ss.stats.rating.to_string());
+                                match s {
+                                    Some(ss) => {
+                                        rawstats.insert(k.to_string(), ss.stats.rating.to_string());
+                                    }
+                                    None => {}
+                                }
+                            }
+
+                            if let Some(msg) = msg_tmpl {
+                                let message = msg
+                                    .split_whitespace()
+                                    .map(|word| match word {
+                                        _ if word.contains("=lightning") => rawstats
+                                            .get("lightning")
+                                            .map_or("not found", String::as_str)
+                                            .to_owned(),
+                                        _ if word.contains("=chess") => rawstats
+                                            .get("chess")
+                                            .map_or("not found", String::as_str)
+                                            .to_owned(),
+                                        _ if word.contains("=bullet") => rawstats
+                                            .get("bullet")
+                                            .map_or("not found", String::as_str)
+                                            .to_owned(),
+                                        _ if word.contains("=rapid") => rawstats
+                                            .get("rapid")
+                                            .map_or("not found", String::as_str)
+                                            .to_owned(),
+                                        _ if word.contains("=tactics_challenge") => rawstats
+                                            .get("tactics_challenge")
+                                            .map_or("not found", String::as_str)
+                                            .to_owned(),
+                                        _ if word.contains("=tactics") => rawstats
+                                            .get("tactics")
+                                            .map_or("not found", String::as_str)
+                                            .to_owned(),
+                                        _ => word.to_owned(),
+                                    })
+                                    .collect::<Vec<String>>()
+                                    .join(" ");
+
+                                return Response::ok(message);
+                            } else {
+                                return Response::ok("message is required");
+                            }
+                        }
+                        StatusCode::NOT_FOUND => {
+                            println!("User not found on chess.com {}", usr);
+                            return Response::ok("error fetching user on chess.com");
+                        }
+                        _ => {
+                            eprintln!("Error fetching user on chess.com {}", status);
+                            return Response::ok("error fetching user on chess.com");
+                        }
                     }
-                    None => {}
                 }
-            }
-
-            if let Some(msg) = msg_tmpl {
-                let message = msg
-                    .split_whitespace()
-                    .map(|word| match word {
-                        _ if word.contains("=lightning") => rawstats
-                            .get("lightning")
-                            .map_or("not found", String::as_str)
-                            .to_owned(),
-                        _ if word.contains("=chess") => rawstats
-                            .get("chess")
-                            .map_or("not found", String::as_str)
-                            .to_owned(),
-                        _ if word.contains("=bullet") => rawstats
-                            .get("bullet")
-                            .map_or("not found", String::as_str)
-                            .to_owned(),
-                        _ if word.contains("=rapid") => rawstats
-                            .get("rapid")
-                            .map_or("not found", String::as_str)
-                            .to_owned(),
-                        _ if word.contains("=tactics_challenge") => rawstats
-                            .get("tactics_challenge")
-                            .map_or("not found", String::as_str)
-                            .to_owned(),
-                        _ if word.contains("=tactics") => rawstats
-                            .get("tactics")
-                            .map_or("not found", String::as_str)
-                            .to_owned(),
-                        _ => word.to_owned(),
-                    })
-                    .collect::<Vec<String>>()
-                    .join(" ");
-
-                return Response::ok(message);
-            } else {
-                return Response::ok("message is required");
+                Err(err) => {
+                    eprintln!("Error fetching user on chess.com {}", err);
+                    return Response::ok("error fetching user on chess.com");
+                }
             }
         }
         None => return Response::ok("username is required"),
