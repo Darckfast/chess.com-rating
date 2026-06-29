@@ -91,17 +91,17 @@ async fn fetch(_req: HttpRequest, _env: Env, _ctx: Context) -> Result<Response> 
                             }
                         }
                         StatusCode::NOT_FOUND => {
-                            println!("User not found on chess.com {}", usr);
-                            return Response::ok("error fetching user on chess.com");
+                            console_log!("User not found on chess.com {}", usr);
+                            return Response::ok("user not found".to_string() + usr);
                         }
                         _ => {
-                            eprintln!("Error fetching user on chess.com {}", status);
+                            console_log!("Error fetching user on chess.com {}", status);
                             return Response::ok("error fetching user on chess.com");
                         }
                     }
                 }
                 Err(err) => {
-                    eprintln!("Error fetching user on chess.com {}", err);
+                    console_log!("Error fetching user on chess.com {}", err);
                     return Response::ok("error fetching user on chess.com");
                 }
             }
