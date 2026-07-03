@@ -85,6 +85,7 @@ async fn fetch(_req: HttpRequest, _env: Env, _ctx: Context) -> Result<Response> 
                                     .collect::<Vec<String>>()
                                     .join(" ");
 
+                                console_log!("rating fetched with success");
                                 return Response::ok(message);
                             } else {
                                 return Response::ok("message is required");
@@ -106,7 +107,10 @@ async fn fetch(_req: HttpRequest, _env: Env, _ctx: Context) -> Result<Response> 
                 }
             }
         }
-        None => return Response::ok("username is required"),
+        None => {
+            console_log!("request is missing username");
+            return Response::ok("username is required");
+        }
     }
 }
 

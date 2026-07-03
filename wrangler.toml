@@ -1,6 +1,8 @@
 name = "chess-com-rating"
 main = "build/index.js"
 compatibility_date = "2026-06-14"
+workers_dev = false
+preview_urls = false
 
 [build]
 command = "cargo install -q \"worker-build@^0.8\" && worker-build --release"
