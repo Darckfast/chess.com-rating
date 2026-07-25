@@ -1,7 +1,7 @@
 [package]
 name = "test-rust"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 authors = ["darckfast <21337578+Darckfast@users.noreply.github.com>"]
 
 [lib]
@@ -13,4 +13,3 @@ worker-macros = { version = "0.8", features = ['http'] }
 http = "1.3"
 reqwest = { version= "0.13.4" , features = ["json"] }
 serde = { version = "1.0.228", features = ["derive"] }
-url = "2.5.8"

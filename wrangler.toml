@@ -10,5 +10,10 @@ command = "cargo install -q \"worker-build@^0.8\" && worker-build --release"
 [observability.logs]
 enabled = true
 
+[durable_objects]
+bindings = [
+  { name = "RUSTY_LIMITER", class_name = "RustyLimiter", script_name = "durable-rusty-limiter"},
+]
+
 [[tail_consumers]]
 service = "axiom-tail-worker"

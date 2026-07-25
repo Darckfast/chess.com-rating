@@ -1,7 +1,6 @@
 use http::StatusCode;
-use serde::{de::IgnoredAny, Deserialize};
-use std::collections::HashMap;
-use worker::*;
+use serde::{Deserialize, de::IgnoredAny};
+use worker::{Context, Env, Request, Response, console_log, console_warn, event, send::SendFuture};
 
 static STATS_KEYS: [&str; 6] = [
     "chess",
@@ -13,103 +12,79 @@ static STATS_KEYS: [&str; 6] = [
 ];
 
 #[event(fetch)]
-async fn fetch(_req: HttpRequest, _env: Env, _ctx: Context) -> Result<Response> {
-    let params: HashMap<String, String> = _req
-        .uri()
-        .query()
-        .map(|a| {
-            url::form_urlencoded::parse(a.as_bytes())
-                .into_owned()
-                .collect()
-        })
-        .unwrap_or_else(HashMap::new);
+async fn fetch(req: Request, env: Env, _ctx: Context) -> worker::Result<Response> {
+    match env.durable_object("RUSTY_LIMITER") {
+        Ok(stub) => {
+            let headers = req.headers();
+            let id = headers
+                .get("cf-connecting-ip")
+                .or(headers.get("x-forwarded-for"))
+                .unwrap_or(Some("127.0.0.1".to_string()))
+                .unwrap();
 
-    let username = params.get("username");
-    let msg_tmpl = params.get("message");
+            let limiter = stub.get_by_name(&id)?;
+            let rs = SendFuture::new(async move {
+                limiter
+                    .fetch_with_str(&"http://rate-limit".to_string())
+                    .await
+            })
+            .await?;
 
-    match username {
-        Some(usr) => {
-            let resp =
-                reqwest::get("https://www.chess.com/callback/member/stats/".to_string() + usr)
-                    .await;
-            match resp {
-                Ok(r) => {
-                    let status = r.status();
-                    match status {
-                        StatusCode::OK => {
-                            let j = r.json::<Chess>().await.unwrap();
+            if rs.status_code() == http::StatusCode::TOO_MANY_REQUESTS {
+                return Response::error("", 429);
+            }
+        }
+        Err(_) => {
+            console_warn!("rate limit not enabled")
+        }
+    }
 
-                            let mut rawstats: HashMap<String, String> = HashMap::new();
+    let params = if let Ok(params) = req.query::<Qs>() {
+        params
+    } else {
+        return Response::error("username and message are required", 400);
+    };
 
-                            for k in &STATS_KEYS {
-                                let s = j.stats.iter().find(|p| p.key == k.to_string());
+    match reqwest::get(format!(
+        "https://www.chess.com/callback/member/stats/{}",
+        params.username
+    ))
+    .await
+    {
+        Ok(rs) => {
+            let status = rs.status();
+            match status {
+                StatusCode::OK => {
+                    let j = rs.json::<Chess>().await.unwrap();
 
-                                match s {
-                                    Some(ss) => {
-                                        rawstats.insert(k.to_string(), ss.stats.rating.to_string());
-                                    }
-                                    None => {}
-                                }
+                    let mut message = params.message;
+                    for k in STATS_KEYS {
+                        let s = j.stats.iter().find(|p| p.key == k.to_string());
+
+                        match s {
+                            Some(ss) => {
+                                message =
+                                    message.replace(&format!("={k}"), &ss.stats.rating.to_string());
                             }
-
-                            if let Some(msg) = msg_tmpl {
-                                let message = msg
-                                    .split_whitespace()
-                                    .map(|word| match word {
-                                        _ if word.contains("=lightning") => rawstats
-                                            .get("lightning")
-                                            .map_or("not found", String::as_str)
-                                            .to_owned(),
-                                        _ if word.contains("=chess") => rawstats
-                                            .get("chess")
-                                            .map_or("not found", String::as_str)
-                                            .to_owned(),
-                                        _ if word.contains("=bullet") => rawstats
-                                            .get("bullet")
-                                            .map_or("not found", String::as_str)
-                                            .to_owned(),
-                                        _ if word.contains("=rapid") => rawstats
-                                            .get("rapid")
-                                            .map_or("not found", String::as_str)
-                                            .to_owned(),
-                                        _ if word.contains("=tactics_challenge") => rawstats
-                                            .get("tactics_challenge")
-                                            .map_or("not found", String::as_str)
-                                            .to_owned(),
-                                        _ if word.contains("=tactics") => rawstats
-                                            .get("tactics")
-                                            .map_or("not found", String::as_str)
-                                            .to_owned(),
-                                        _ => word.to_owned(),
-                                    })
-                                    .collect::<Vec<String>>()
-                                    .join(" ");
-
-                                console_log!("rating fetched with success");
-                                return Response::ok(message);
-                            } else {
-                                return Response::ok("message is required");
-                            }
-                        }
-                        StatusCode::NOT_FOUND => {
-                            console_log!("User not found on chess.com {}", usr);
-                            return Response::ok("user not found".to_string() + usr);
-                        }
-                        _ => {
-                            console_log!("Error fetching user on chess.com {}", status);
-                            return Response::ok("error fetching user on chess.com");
+                            None => (),
                         }
                     }
+
+                    Response::ok(message)
                 }
-                Err(err) => {
-                    console_log!("Error fetching user on chess.com {}", err);
-                    return Response::ok("error fetching user on chess.com");
+                StatusCode::NOT_FOUND => {
+                    console_log!("User not found on chess.com {}", params.username);
+                    Response::ok(format!("user {} not found", params.username))
+                }
+                _ => {
+                    console_log!("Error fetching user on chess.com {}", status);
+                    Response::ok("error fetching user on chess.com")
                 }
             }
         }
-        None => {
-            console_log!("request is missing username");
-            return Response::ok("username is required");
+        Err(err) => {
+            console_log!("Error fetching user on chess.com {}", err);
+            Response::error("error fetching user on chess.com", 500)
         }
     }
 }
@@ -134,6 +109,12 @@ where
         IntOrAny::Int(i) => Ok(i),
         IntOrAny::Any(_) => Ok(default_skipped_int()),
     }
+}
+
+#[derive(Deserialize, Debug)]
+struct Qs {
+    username: String,
+    message: String,
 }
 
 #[derive(Deserialize, Debug)]

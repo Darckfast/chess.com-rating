@@ -1261,7 +1261,6 @@ dependencies = [
  "http",
  "reqwest",
  "serde",
- "url",
  "worker",
  "worker-macros",
 ]
