@@ -1,4 +1,7 @@
+use std::time::Duration;
+
 use http::StatusCode;
+use reqwest::Client;
 use serde::{Deserialize, de::IgnoredAny};
 use worker::{Context, Env, Request, Response, console_log, console_warn, event, send::SendFuture};
 
@@ -42,14 +45,21 @@ async fn fetch(req: Request, env: Env, _ctx: Context) -> worker::Result<Response
     let params = if let Ok(params) = req.query::<Qs>() {
         params
     } else {
-        return Response::error("username and message are required", 400);
+        return Response::ok("username and message are required");
     };
 
-    match reqwest::get(format!(
-        "https://www.chess.com/callback/member/stats/{}",
-        params.username
-    ))
-    .await
+    let client = Client::builder()
+        .timeout(Duration::from_secs(5))
+        .build()
+        .map_err(|e| worker::Error::InternalError(e.to_string()))?;
+
+    match client
+        .get(format!(
+            "https://www.chess.com/callback/member/stats/{}",
+            params.username
+        ))
+        .send()
+        .await
     {
         Ok(rs) => {
             let status = rs.status();
@@ -83,8 +93,12 @@ async fn fetch(req: Request, env: Env, _ctx: Context) -> worker::Result<Response
             }
         }
         Err(err) => {
-            console_log!("Error fetching user on chess.com {}", err);
-            Response::error("error fetching user on chess.com", 500)
+            if err.is_timeout() {
+                Response::ok("chess.com took too long to respond :(")
+            } else {
+                console_log!("Error fetching user on chess.com {}", err);
+                Response::error("error fetching user on chess.com", 500)
+            }
         }
     }
 }
