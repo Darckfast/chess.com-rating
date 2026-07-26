@@ -1,9 +1,8 @@
-use std::time::Duration;
-
-use http::StatusCode;
-use reqwest::Client;
 use serde::{Deserialize, de::IgnoredAny};
-use worker::{Context, Env, Request, Response, console_log, console_warn, event, send::SendFuture};
+use worker::{
+    Context, Env, Fetch, Method, Request, Response, console_warn, event, send::SendFuture,
+    web_sys::AbortSignal,
+};
 
 static STATS_KEYS: [&str; 6] = [
     "chess",
@@ -48,24 +47,24 @@ async fn fetch(req: Request, env: Env, _ctx: Context) -> worker::Result<Response
         return Response::ok("username and message are required");
     };
 
-    let client = Client::builder()
-        .timeout(Duration::from_secs(5))
-        .build()
-        .map_err(|e| worker::Error::InternalError(e.to_string()))?;
+    let abort = AbortSignal::timeout_with_u32(5_000);
+    let abort = worker::AbortSignal::from(abort);
 
-    match client
-        .get(format!(
+    match Fetch::Request(Request::new(
+        &format!(
             "https://www.chess.com/callback/member/stats/{}",
             params.username
-        ))
-        .send()
-        .await
+        ),
+        Method::Get,
+    )?)
+    .send_with_signal(&abort)
+    .await
     {
-        Ok(rs) => {
-            let status = rs.status();
+        Ok(mut rs) => {
+            let status = rs.status_code();
             match status {
-                StatusCode::OK => {
-                    let j = rs.json::<Chess>().await.unwrap();
+                200 => {
+                    let j = rs.json::<Chess>().await?;
 
                     let mut message = params.message;
                     for k in STATS_KEYS {
@@ -82,21 +81,22 @@ async fn fetch(req: Request, env: Env, _ctx: Context) -> worker::Result<Response
 
                     Response::ok(message)
                 }
-                StatusCode::NOT_FOUND => {
-                    console_log!("User not found on chess.com {}", params.username);
+                404 => {
+                    console_warn!("User not found on chess.com {}", params.username);
                     Response::ok(format!("user {} not found", params.username))
                 }
                 _ => {
-                    console_log!("Error fetching user on chess.com {}", status);
+                    console_warn!("Error fetching user on chess.com {}", status);
                     Response::ok("error fetching user on chess.com")
                 }
             }
         }
         Err(err) => {
-            if err.is_timeout() {
+            if err.to_string().contains("TimeoutError") {
+                console_warn!("Timeout while fetching user stats");
                 Response::ok("chess.com took too long to respond :(")
             } else {
-                console_log!("Error fetching user on chess.com {}", err);
+                console_warn!("Error fetching user on chess.com {}", err);
                 Response::error("error fetching user on chess.com", 500)
             }
         }
